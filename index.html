@@ -272,5 +272,71 @@
   Jamia Masjid Wagub &middot; Seer Jagir, Baramulla, Kashmir
 </footer>
 
+<script>
+(function(){
+  var lat = 34.1663, lng = 74.3405;
+  var fajrAngle = 18, ishaAngle = 17;
+  function julian(y,m,d){
+    if (m<=2){ y-=1; m+=12; }
+    var A = Math.floor(y/100), B = 2-A+Math.floor(A/4);
+    return Math.floor(365.25*(y+4716))+Math.floor(30.6001*(m+1))+d+B-1524.5;
+  }
+  function sunPosition(jd){
+    var D = jd - 2451545.0;
+    var g = (357.529 + 0.98560028*D) % 360;
+    var q = (280.459 + 0.98564736*D) % 360;
+    var L = (q + 1.915*Math.sin(g*Math.PI/180) + 0.020*Math.sin(2*g*Math.PI/180)) % 360;
+    var e = 23.439 - 0.00000036*D;
+    var RA = Math.atan2(Math.cos(e*Math.PI/180)*Math.sin(L*Math.PI/180), Math.cos(L*Math.PI/180)) * 180/Math.PI / 15;
+    var eqt = q/15 - fixHour(RA);
+    var decl = Math.asin(Math.sin(e*Math.PI/180)*Math.sin(L*Math.PI/180)) * 180/Math.PI;
+    return {decl: decl, eqt: eqt};
+  }
+  function fixHour(h){ h = h % 24; if(h<0) h+=24; return h; }
+  function sunAngleTime(angle, jd, direction, lat){
+    var s = sunPosition(jd);
+    var d = s.decl, eqt = s.eqt;
+    var noon = fixHour(12 - lng/15 - eqt + 5.5);
+    var num = -Math.sin(angle*Math.PI/180) - Math.sin(d*Math.PI/180)*Math.sin(lat*Math.PI/180);
+    var den = Math.cos(d*Math.PI/180)*Math.cos(lat*Math.PI/180);
+    var t = Math.acos(Math.max(-1,Math.min(1,num/den))) * 180/Math.PI / 15;
+    return direction === 'ccw' ? noon - t : noon + t;
+  }
+  function asrTime(factor, jd, lat){
+    var s = sunPosition(jd);
+    var d = s.decl, eqt = s.eqt;
+    var noon = fixHour(12 - lng/15 - eqt + 5.5);
+    var a = -1 * (Math.atan(1/(factor + Math.tan(Math.abs(lat-d)*Math.PI/180)))) * 180/Math.PI;
+    var num = -Math.sin(a*Math.PI/180) - Math.sin(d*Math.PI/180)*Math.sin(lat*Math.PI/180);
+    var den = Math.cos(d*Math.PI/180)*Math.cos(lat*Math.PI/180);
+    var t = Math.acos(Math.max(-1,Math.min(1,num/den))) * 180/Math.PI / 15;
+    return noon + t;
+  }
+  function fmt(hourFloat){
+    hourFloat = fixHour(hourFloat);
+    var h = Math.floor(hourFloat);
+    var m = Math.round((hourFloat-h)*60);
+    if(m===60){ m=0; h+=1; }
+    var ampm = h>=12 ? 'PM' : 'AM';
+    var h12 = h%12; if(h12===0) h12=12;
+    return h12 + ':' + (m<10?'0':'') + m + ' ' + ampm;
+  }
+  var now = new Date();
+  var jd = julian(now.getFullYear(), now.getMonth()+1, now.getDate());
+  var fajr = sunAngleTime(fajrAngle, jd, 'ccw', lat) + 57/60;
+  var sunPos = sunPosition(jd);
+  var dhuhr = fixHour(12 - lng/15 - sunPos.eqt + 5.5) + 51/60;
+  var asr = asrTime(2, jd, lat) + 13/60;
+  var maghrib = sunAngleTime(0.833, jd, 'cw', lat) + 8/60;
+  var isha = sunAngleTime(ishaAngle, jd, 'cw', lat) + 23/60;
+  document.getElementById('t-fajr').textContent = fmt(fajr);
+  document.getElementById('t-zuhr').textContent = fmt(dhuhr);
+  document.getElementById('t-asr').textContent = fmt(asr);
+  document.getElementById('t-maghrib').textContent = fmt(maghrib);
+  document.getElementById('t-isha').textContent = fmt(isha);
+  var dateStr = now.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  document.getElementById('t-date').textContent = 'Auto-calculated for ' + dateStr + ' — Wagub, Baramulla';
+})();
+</script>
 </body>
 </html>
